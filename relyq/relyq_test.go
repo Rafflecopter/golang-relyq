@@ -2,6 +2,7 @@ package relyq
 
 import (
 	"fmt"
+	"github.com/Rafflecopter/golang-relyq/marshallers"
 	"github.com/Rafflecopter/golang-relyq/storage/redis"
 	"github.com/Rafflecopter/golang-simpleq/simpleq"
 	"github.com/garyburd/redigo/redis"
@@ -245,33 +246,33 @@ func TestListen(t *testing.T) {
 	defer end(t, q)
 	done, clsd := make(chan bool), make(chan bool)
 
-  push(t, q, Task{"x": "1"})
-  push(t, q, Task{"x": "2"})
-  push(t, q, Task{"x": "3"})
-  l := q.Listen()
+	push(t, q, Task{"x": "1"})
+	push(t, q, Task{"x": "2"})
+	push(t, q, Task{"x": "3"})
+	l := q.Listen()
 
-  go func() {
-    for err := range l.Errors {
-      t.Error("Listener", err)
-    }
-    clsd <- true
-  }()
+	go func() {
+		for err := range l.Errors {
+			t.Error("Listener", err)
+		}
+		clsd <- true
+	}()
 
-  go func() {
-    for task := range l.Tasks {
-      switch task["x"] {
-      case "1":
-        l.Finish <- task
-      case "2":
-        task["y"] = "2"
-        l.Fail <- task
-      case "3":
-        done <- true
-      }
-    }
+	go func() {
+		for task := range l.Tasks {
+			switch task["x"] {
+			case "1":
+				l.Finish <- task
+			case "2":
+				task["y"] = "2"
+				l.Fail <- task
+			case "3":
+				done <- true
+			}
+		}
 
-    clsd <- true
-  }()
+		clsd <- true
+	}()
 
 	select {
 	case <-done:
@@ -288,8 +289,8 @@ func TestListen(t *testing.T) {
 		t.Error(err)
 	}
 
-  close(l.Finish)
-  close(l.Fail)
+	close(l.Finish)
+	close(l.Fail)
 
 	for i := 0; i < 2; i++ {
 		select {
@@ -356,7 +357,7 @@ func checkTaskEqual(t *testing.T, el, compare Task) {
 }
 
 func basicStorage(prefix string) Storage {
-	return redisstorage.NewJson(pool, prefix, ":")
+	return redisstorage.New(marshallers.JSON, pool, prefix, ":")
 }
 
 func begin(s Storage, c *Config) *RelyQ {
@@ -379,7 +380,7 @@ func end(t *testing.T, qs ...io.Closer) {
 			t.Error(err)
 		}
 	}
-  t.Log("Active redis connections:", pool.ActiveCount())
+	t.Log("Active redis connections:", pool.ActiveCount())
 }
 
 func push(t *testing.T, q *RelyQ, task Task) {

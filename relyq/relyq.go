@@ -7,7 +7,6 @@ import (
 	"github.com/extemporalgenome/uuid"
 	"github.com/garyburd/redigo/redis"
 	"github.com/yanatan16/gowaiter"
-  "github.com/Rafflecopter/golang-relyq/storage/redis"
 	"io"
 )
 

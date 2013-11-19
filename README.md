@@ -115,10 +115,15 @@ Create a storage object:
 storage := redisstorage.New(redisstorage.JSONMarshaller, pool, cfg.Prefix, cfg.Delimiter)
 ```
 
-Or, for skipping the storage step
+Or, for skipping the storage step, use this handy shortcut
 ```go
-q := redisstorage.NewJson(pool, cfg)
+q := relyq.NewRedisJson(pool, cfg)
 ```
+
+## TODO
+
+- deferred tasks
+- recurring tasks
 
 ## License
 

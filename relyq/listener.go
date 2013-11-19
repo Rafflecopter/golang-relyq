@@ -33,7 +33,7 @@ func NewListener(rq *RelyQ, sql *simpleq.Listener) *Listener {
 
 	go l.listenOnError()
 	go l.listenOnFinish()
-  go l.listenOnElements()
+	go l.listenOnElements()
 	return l
 }
 
@@ -49,25 +49,25 @@ func (l *Listener) listenOnError() {
 }
 
 func (l *Listener) listenOnFinish() {
-  defer l.closeErrors()
-  for {
-    select {
-    case t, ok := <-l.Fail:
-      if !ok {
-        return
-      }
-      if err := l.rq.Fail(t); err != nil {
-        l.Errors <- errorcaller.Err(err)
-      }
-    case t, ok := <-l.Finish:
-      if !ok {
-        return
-      }
-      if err := l.rq.Finish(t); err != nil {
-        l.Errors <- errorcaller.Err(err)
-      }
-    }
-  }
+	defer l.closeErrors()
+	for {
+		select {
+		case t, ok := <-l.Fail:
+			if !ok {
+				return
+			}
+			if err := l.rq.Fail(t); err != nil {
+				l.Errors <- errorcaller.Err(err)
+			}
+		case t, ok := <-l.Finish:
+			if !ok {
+				return
+			}
+			if err := l.rq.Finish(t); err != nil {
+				l.Errors <- errorcaller.Err(err)
+			}
+		}
+	}
 }
 
 func (l *Listener) listenOnElements() {
