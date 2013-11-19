@@ -1,6 +1,6 @@
 # relyq [![Build Status][1]][2]
 
-A relatively simple Redis-backed reliable task queue and state machine.
+A relatively simple Redis-backed reliable task queue and state machine. [Documentation](http://godoc.org/github.com/Rafflecopter/golang-relyq/relyq)
 
 Its made up of four [simpleq](https://github.com/Rafflecopter/golang-simpleq)'s: todo, doing, failed, and done. Tasks will never be dropped on the floor even if a processing server crashes because all operations are atomic. Tasks can be represented as any data type.
 
@@ -38,7 +38,7 @@ func CreateRelyQ(pool *redis.Pool) *relyq.RelyQ {
 }
 
 func QuickCreateRelyQ(pool *redis.Pool) *relyq.RelyQ {
-  return redisstorage.NewJson(pool, &relyq.Config{Prefix: "my-relyq"})
+  return relyq.NewRedisJson(pool, &relyq.Config{Prefix: "my-relyq"})
 }
 ```
 

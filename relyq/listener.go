@@ -9,19 +9,19 @@ type Listener struct {
 	l                   *simpleq.Listener
 	Errors              chan error
 	Tasks, Fail, Finish chan Task
-	rq                  *RelyQ
+	rq                  *Queue
 	closeErrorCount     int
 }
 
 // Start a listener
-func (q *RelyQ) Listen() *Listener {
+func (q *Queue) Listen() *Listener {
 	if q.listener == nil {
 		q.listener = NewListener(q, q.Todo.PopPipeListen(q.Doing))
 	}
 	return q.listener
 }
 
-func NewListener(rq *RelyQ, sql *simpleq.Listener) *Listener {
+func NewListener(rq *Queue, sql *simpleq.Listener) *Listener {
 	l := &Listener{
 		l:      sql,
 		Tasks:  make(chan Task),

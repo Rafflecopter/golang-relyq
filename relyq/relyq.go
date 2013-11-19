@@ -11,9 +11,9 @@ import (
 )
 
 // A reliable redis-backed queue
-type RelyQ struct {
+type Queue struct {
 	// The underlying simpleqs
-	Todo, Doing, Done, Failed *simpleq.SimpleQ
+	Todo, Doing, Done, Failed *simpleq.Queue
 	Storage                   Storage
 	Cfg                       *Config
 	listener                  *Listener
@@ -21,7 +21,7 @@ type RelyQ struct {
 
 // Configuration for Relyq
 type Config struct {
-	// Required: Prefix on SimpleQ key names for redis
+	// Required: Prefix on simpleq.Queue key names for redis
 	Prefix string
 	// Field in any object which contains a unique identifier
 	// Defaults to "id"
@@ -52,10 +52,10 @@ type Storage interface {
 }
 
 // Create a reliable queue
-func New(pool *redis.Pool, storage Storage, cfg *Config) *RelyQ {
+func New(pool *redis.Pool, storage Storage, cfg *Config) *Queue {
 	cfg.Defaults()
 
-	rq := &RelyQ{
+	rq := &Queue{
 		Todo:    simpleq.New(pool, cfg.Prefix+cfg.Delimiter+"todo"),
 		Doing:   simpleq.New(pool, cfg.Prefix+cfg.Delimiter+"doing"),
 		Failed:  simpleq.New(pool, cfg.Prefix+cfg.Delimiter+"failed"),
@@ -71,7 +71,7 @@ func New(pool *redis.Pool, storage Storage, cfg *Config) *RelyQ {
 }
 
 // Push a task onto the queue
-func (q *RelyQ) Push(task Task) error {
+func (q *Queue) Push(task Task) error {
 	id := q.id(task)
 	w := waiter.New(2)
 
@@ -93,7 +93,7 @@ func (q *RelyQ) Push(task Task) error {
 }
 
 // Move the next task to the Doing queue. May return nil
-func (q *RelyQ) Process() (Task, error) {
+func (q *Queue) Process() (Task, error) {
 	id, err := q.Todo.PopPipe(q.Doing)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (q *RelyQ) Process() (Task, error) {
 }
 
 // Block and process the next task.
-func (q *RelyQ) BProcess(timeout_secs int) (Task, error) {
+func (q *Queue) BProcess(timeout_secs int) (Task, error) {
 	id, err := q.Todo.BPopPipe(q.Doing, timeout_secs)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (q *RelyQ) BProcess(timeout_secs int) (Task, error) {
 // Move a task to the Done queue if in use
 // If a task is not in use, delete if CleanFinishKeepStorage is false
 // Sometimes a task is in the Failed queue already (maybe timeout) so we check there if not in Finish
-func (q *RelyQ) Finish(task Task) error {
+func (q *Queue) Finish(task Task) error {
 	id := q.id(task)
 	w := waiter.New(2)
 
@@ -163,7 +163,7 @@ func (q *RelyQ) Finish(task Task) error {
 }
 
 // Move a task to the Failed queue
-func (q *RelyQ) Fail(task Task) error {
+func (q *Queue) Fail(task Task) error {
 	id := q.id(task)
 	w := waiter.New(2)
 
@@ -188,7 +188,7 @@ func (q *RelyQ) Fail(task Task) error {
 
 // Remove a task from a queue
 // If dontDelete (single extra arg) is true, then no delete call will be done for the task
-func (q *RelyQ) Remove(subq *simpleq.SimpleQ, task Task, keepInStorage ...bool) error {
+func (q *Queue) Remove(subq *simpleq.Queue, task Task, keepInStorage ...bool) error {
 	id := q.id(task)
 	w := waiter.New(2)
 
@@ -218,7 +218,7 @@ func (q *RelyQ) Remove(subq *simpleq.SimpleQ, task Task, keepInStorage ...bool) 
 }
 
 // End the queue
-func (q *RelyQ) Close() error {
+func (q *Queue) Close() error {
 	w := waiter.New(5)
 
 	w.Close(q.Todo)
@@ -230,7 +230,7 @@ func (q *RelyQ) Close() error {
 	return w.Wait()
 }
 
-func (q *RelyQ) id(task Task) string {
+func (q *Queue) id(task Task) string {
 	if id, ok := task[q.Cfg.IdField]; ok {
 		if sid, ok := id.(string); ok {
 			return sid
@@ -243,7 +243,7 @@ func (q *RelyQ) id(task Task) string {
 }
 
 // Remove the ID field from
-func (q *RelyQ) resetId(task Task) string {
+func (q *Queue) resetId(task Task) string {
 	delete(task, q.Cfg.IdField)
 	return q.id(task)
 }

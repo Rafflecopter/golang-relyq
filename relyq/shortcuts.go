@@ -6,7 +6,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-func NewRedisJson(pool *redis.Pool, cfg *Config) *RelyQ {
+func NewRedisJson(pool *redis.Pool, cfg *Config) *Queue {
 	cfg.Defaults()
 	storage := redisstorage.New(marshallers.JSON, pool, cfg.Prefix, cfg.Delimiter)
 	return New(pool, storage, cfg)

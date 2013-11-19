@@ -321,7 +321,7 @@ func rstr(n int) string {
 	return string(s)
 }
 
-func checkList(t *testing.T, rq *RelyQ, sq *simpleq.SimpleQ, els ...Task) {
+func checkList(t *testing.T, rq *Queue, sq *simpleq.Queue, els ...Task) {
 	list, err := sq.List()
 	if err != nil {
 		t.Error("Error List(): " + err.Error())
@@ -360,7 +360,7 @@ func basicStorage(prefix string) Storage {
 	return redisstorage.New(marshallers.JSON, pool, prefix, ":")
 }
 
-func begin(s Storage, c *Config) *RelyQ {
+func begin(s Storage, c *Config) *Queue {
 	if s == nil {
 		s = basicStorage(c.Prefix)
 	}
@@ -383,7 +383,7 @@ func end(t *testing.T, qs ...io.Closer) {
 	t.Log("Active redis connections:", pool.ActiveCount())
 }
 
-func push(t *testing.T, q *RelyQ, task Task) {
+func push(t *testing.T, q *Queue, task Task) {
 	if err := q.Push(task); err != nil {
 		t.Error("Error Push(", task, "): ", err)
 	}
