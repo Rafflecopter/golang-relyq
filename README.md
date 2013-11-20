@@ -1,12 +1,16 @@
 # relyq [![Build Status][1]][2]
 
-A relatively simple Redis-backed reliable task queue and state machine. [Documentation](http://godoc.org/github.com/Rafflecopter/golang-relyq/relyq)
+A relatively simple Redis-backed reliable task queue and state machine.
 
 Its made up of four [simpleq](https://github.com/Rafflecopter/golang-simpleq)'s: todo, doing, failed, and done. Tasks will never be dropped on the floor even if a processing server crashes because all operations are atomic. Tasks can be represented as any data type.
 
 _Note_: relyq assumes all tasks are objects. It is opinionated in that way. Also, all tasks have id's. If they don't exist, they are created using a random uuid.
 
 There are a few redis clients for Go but this package uses [redigo](https://github.com/garyburd/redigo)
+
+### Documentation
+
+[Documentation on godoc.org](http://godoc.org/github.com/Rafflecopter/golang-relyq/relyq)
 
 ## Install
 
@@ -23,7 +27,7 @@ import (
   redisstorage "github.com/Rafflecopter/golang-relyq/storage/redis"
 )
 
-func CreateRelyQ(pool *redis.Pool) *relyq.RelyQ {
+func CreateRelyQ(pool *redis.Pool) *relyq.Queue {
   cfg := &relyq.Config{
     Prefix: "my-relyq", // Required
     Delimiter: ":", // Defaults to :
@@ -37,7 +41,7 @@ func CreateRelyQ(pool *redis.Pool) *relyq.RelyQ {
   return relyq.New(pool, storage, cfg)
 }
 
-func QuickCreateRelyQ(pool *redis.Pool) *relyq.RelyQ {
+func QuickCreateRelyQ(pool *redis.Pool) *relyq.Queue {
   return relyq.NewRedisJson(pool, &relyq.Config{Prefix: "my-relyq"})
 }
 ```
