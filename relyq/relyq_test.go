@@ -305,12 +305,12 @@ func TestListen(t *testing.T) {
 
 func defaultConfig() *Config {
 	return &Config{
-		Prefix: "go-relyq-test:" + randKey(),
+		Prefix: randKey(),
 	}
 }
 
 func randKey() string {
-	return "go-simpleq-test:" + rstr(8)
+	return "go-relyq-test:" + rstr(8)
 }
 
 func rstr(n int) string {
