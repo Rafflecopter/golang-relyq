@@ -6,21 +6,20 @@ import (
 )
 
 var (
-	JSON JSONMarshaller = JSONMarshaller(true)
+	Json JsonMarshaller = JsonMarshaller(true)
 )
 
 type Marshaller interface {
-	Marshal(map[string]interface{}) ([]byte, error)
-	Unmarshal([]byte) (map[string]interface{}, error)
+	Marshal(interface{}) ([]byte, error)
+	Unmarshal([]byte, interface{}) error
 }
 
-type JSONMarshaller bool
+type JsonMarshaller bool
 
-func (z JSONMarshaller) Marshal(obj map[string]interface{}) ([]byte, error) {
+func (z JsonMarshaller) Marshal(obj interface{}) ([]byte, error) {
 	return json.Marshal(obj)
 }
-func (z JSONMarshaller) Unmarshal(enc []byte) (map[string]interface{}, error) {
-	obj := make(map[string]interface{})
-	err := json.Unmarshal(enc, &obj)
-	return obj, err
+func (z JsonMarshaller) Unmarshal(enc []byte, obj interface{}) error {
+	err := json.Unmarshal(enc, obj)
+	return err
 }

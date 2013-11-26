@@ -20,28 +20,28 @@ func New(marshaller marshallers.Marshaller, pool *redis.Pool, prefix, delim stri
 	}
 }
 
-func (rs *RedisStorage) Get(id string) (map[string]interface{}, error) {
-	val, err2 := redis.Bytes(rs.do("GET", rs.prefix+id))
+func (rs *RedisStorage) Get(id []byte, obj interface{}) error {
+	val, err := redis.Bytes(rs.do("GET", rs.prefixed(id)))
 
-	if err2 != nil {
-		return nil, err2
+	if err != nil {
+		return err
 	}
 
-	return rs.m.Unmarshal(val)
+	return rs.m.Unmarshal(val, obj)
 }
 
-func (rs *RedisStorage) Set(obj map[string]interface{}, id string) error {
+func (rs *RedisStorage) Set(obj interface{}, id []byte) error {
 	val, err := rs.m.Marshal(obj)
 	if err != nil {
 		return err
 	}
 
-	_, err = rs.do("SET", rs.prefix+id, val)
+	_, err = rs.do("SET", rs.prefixed(id), val)
 	return err
 }
 
-func (rs *RedisStorage) Del(id string) error {
-	_, err := rs.do("DEL", rs.prefix+id)
+func (rs *RedisStorage) Del(id []byte) error {
+	_, err := rs.do("DEL", rs.prefixed(id))
 	return err
 }
 
@@ -53,4 +53,8 @@ func (rs *RedisStorage) do(cmd string, args ...interface{}) (interface{}, error)
 	conn := rs.pool.Get()
 	defer conn.Close()
 	return conn.Do(cmd, args...)
+}
+
+func (rs *RedisStorage) prefixed(id []byte) []byte {
+	return append([]byte(rs.prefix), id...)
 }

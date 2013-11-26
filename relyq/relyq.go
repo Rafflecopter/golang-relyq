@@ -2,9 +2,8 @@
 package relyq
 
 import (
-	"errors"
+	"fmt"
 	"github.com/Rafflecopter/golang-simpleq/simpleq"
-	"github.com/extemporalgenome/uuid"
 	"github.com/garyburd/redigo/redis"
 	"github.com/yanatan16/gowaiter"
 	"io"
@@ -37,16 +36,19 @@ type Config struct {
 }
 
 // A useful alias for a task
-type Task map[string]interface{}
+type Ider interface {
+	// Ensure an id exists by creating it if necessary. Always return it.
+	Id() []byte
+}
 
 // Storage interface
 type Storage interface {
 	// Get a task object
-	Get(taskid string) (map[string]interface{}, error)
+	Get(taskid []byte, task interface{}) error
 	// Save a task object
-	Set(task map[string]interface{}, taskid string) error
+	Set(task interface{}, taskid []byte) error
 	// Delete the task object in the storage
-	Del(taskid string) error
+	Del(taskid []byte) error
 	// End the Storage connection
 	io.Closer
 }
@@ -71,8 +73,8 @@ func New(pool *redis.Pool, storage Storage, cfg *Config) *Queue {
 }
 
 // Push a task onto the queue
-func (q *Queue) Push(task Task) error {
-	id := q.id(task)
+func (q *Queue) Push(task Ider) error {
+	id := task.Id()
 	w := waiter.New(2)
 
 	go func() {
@@ -83,7 +85,7 @@ func (q *Queue) Push(task Task) error {
 	}()
 
 	go func() {
-		if _, err := q.Todo.Push([]byte(id)); err != nil {
+		if _, err := q.Todo.Push(id); err != nil {
 			w.Errors <- err
 		}
 		w.Done <- true
@@ -92,38 +94,40 @@ func (q *Queue) Push(task Task) error {
 	return w.Wait()
 }
 
-// Move the next task to the Doing queue. May return nil
-func (q *Queue) Process() (Task, error) {
+// Move the next task to the Doing queue. Will decode into task. Returns ok as false if nothing happened
+func (q *Queue) Process(task Ider) (ok bool, err error) {
 	id, err := q.Todo.PopPipe(q.Doing)
 	if err != nil {
-		return nil, err
+		return false, err
+	} else if id == nil {
+		return false, nil
 	}
 
-	t, err := q.Storage.Get(string(id))
-	return Task(t), err
+	err = q.Storage.Get(id, task)
+	return err == nil, err
 }
 
 // Block and process the next task.
-func (q *Queue) BProcess(timeout_secs int) (Task, error) {
+func (q *Queue) BProcess(timeout_secs int, task Ider) error {
 	id, err := q.Todo.BPopPipe(q.Doing, timeout_secs)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	t, err := q.Storage.Get(string(id))
-	return Task(t), err
+	err = q.Storage.Get(id, task)
+	return err
 }
 
 // Move a task to the Done queue if in use
 // If a task is not in use, delete if CleanFinishKeepStorage is false
 // Sometimes a task is in the Failed queue already (maybe timeout) so we check there if not in Finish
-func (q *Queue) Finish(task Task) error {
-	id := q.id(task)
+func (q *Queue) Finish(task Ider) error {
+	id := task.Id()
 	w := waiter.New(2)
 
 	go func() {
 		if q.Cfg.KeepDoneTasks {
-			if err := q.Storage.Set(map[string]interface{}(task), id); err != nil {
+			if err := q.Storage.Set(task, id); err != nil {
 				w.Errors <- err
 			}
 		} else {
@@ -136,23 +140,23 @@ func (q *Queue) Finish(task Task) error {
 
 	go func() {
 		if q.Cfg.UseDoneQueue {
-			if n, err := q.Doing.SPullPipe(q.Done, []byte(id)); err != nil {
+			if n, err := q.Doing.SPullPipe(q.Done, id); err != nil {
 				w.Errors <- err
 			} else if n == 0 {
-				if n, err := q.Failed.SPullPipe(q.Done, []byte(id)); err != nil {
+				if n, err := q.Failed.SPullPipe(q.Done, id); err != nil {
 					w.Errors <- err
 				} else if n == 0 {
-					w.Errors <- errors.New("Task " + id + " not found in Doing or Failed queues.")
+					w.Errors <- fmt.Errorf("Task %s not found in Doing or Failed queues.", id)
 				}
 			}
 		} else {
-			if n, err := q.Doing.Pull([]byte(id)); err != nil {
+			if n, err := q.Doing.Pull(id); err != nil {
 				w.Errors <- err
 			} else if n == 0 {
-				if n, err := q.Failed.Pull([]byte(id)); err != nil {
+				if n, err := q.Failed.Pull(id); err != nil {
 					w.Errors <- err
 				} else if n == 0 {
-					w.Errors <- errors.New("Task " + id + " not found in Doing or Failed queues.")
+					w.Errors <- fmt.Errorf("Task %s not found in Doing or Failed queues.", id)
 				}
 			}
 		}
@@ -163,22 +167,22 @@ func (q *Queue) Finish(task Task) error {
 }
 
 // Move a task to the Failed queue
-func (q *Queue) Fail(task Task) error {
-	id := q.id(task)
+func (q *Queue) Fail(task Ider) error {
+	id := task.Id()
 	w := waiter.New(2)
 
 	go func() {
-		if err := q.Storage.Set(map[string]interface{}(task), id); err != nil {
+		if err := q.Storage.Set(task, id); err != nil {
 			w.Errors <- err
 		}
 		w.Done <- true
 	}()
 
 	go func() {
-		if n, err := q.Doing.SPullPipe(q.Failed, []byte(id)); err != nil {
+		if n, err := q.Doing.SPullPipe(q.Failed, id); err != nil {
 			w.Errors <- err
 		} else if n == 0 {
-			w.Errors <- errors.New("Task " + id + " not found in Doing queue.")
+			w.Errors <- fmt.Errorf("Task %s not found in Doing queue.", id)
 		}
 		w.Done <- true
 	}()
@@ -189,12 +193,12 @@ func (q *Queue) Fail(task Task) error {
 // Remove a task from a queue
 // If dontDelete (single extra arg) is true, then no delete call will be done for the task
 func (q *Queue) Remove(subq *simpleq.Queue, task Task, keepInStorage ...bool) error {
-	id := q.id(task)
+	id := task.Id()
 	w := waiter.New(2)
 
 	go func() {
 		if len(keepInStorage) > 0 && keepInStorage[0] {
-			if err := q.Storage.Set(map[string]interface{}(task), id); err != nil {
+			if err := q.Storage.Set(task, id); err != nil {
 				w.Errors <- err
 			}
 		} else {
@@ -206,10 +210,10 @@ func (q *Queue) Remove(subq *simpleq.Queue, task Task, keepInStorage ...bool) er
 	}()
 
 	go func() {
-		if n, err := subq.Pull([]byte(id)); err != nil {
+		if n, err := subq.Pull(id); err != nil {
 			w.Errors <- err
 		} else if n == 0 {
-			w.Errors <- errors.New("Task " + id + " not found in queue.")
+			w.Errors <- fmt.Errorf("Task %s not found in queue.", id)
 		}
 		w.Done <- true
 	}()
@@ -228,24 +232,6 @@ func (q *Queue) Close() error {
 	w.Close(q.Storage)
 
 	return w.Wait()
-}
-
-func (q *Queue) id(task Task) string {
-	if id, ok := task[q.Cfg.IdField]; ok {
-		if sid, ok := id.(string); ok {
-			return sid
-		}
-	}
-
-	id := uuid.NewRandom().String()
-	task[q.Cfg.IdField] = id
-	return id
-}
-
-// Remove the ID field from
-func (q *Queue) resetId(task Task) string {
-	delete(task, q.Cfg.IdField)
-	return q.id(task)
 }
 
 func (cfg *Config) Defaults() {

@@ -3,37 +3,38 @@ package relyq
 import (
 	"github.com/Rafflecopter/golang-simpleq/simpleq"
 	"github.com/yanatan16/errorcaller"
+	"reflect"
 )
 
 type Listener struct {
 	l                   *simpleq.Listener
 	Errors              chan error
-	Tasks, Fail, Finish chan Task
+	Tasks, Fail, Finish chan Ider
 	rq                  *Queue
 	closeErrorCount     int
 }
 
 // Start a listener
-func (q *Queue) Listen() *Listener {
+func (q *Queue) Listen(example Ider) *Listener {
 	if q.listener == nil {
-		q.listener = NewListener(q, q.Todo.PopPipeListen(q.Doing))
+		q.listener = NewListener(q, q.Todo.PopPipeListen(q.Doing), example)
 	}
 	return q.listener
 }
 
-func NewListener(rq *Queue, sql *simpleq.Listener) *Listener {
+func NewListener(rq *Queue, sql *simpleq.Listener, example Ider) *Listener {
 	l := &Listener{
 		l:      sql,
-		Tasks:  make(chan Task),
-		Fail:   make(chan Task),
-		Finish: make(chan Task),
+		Tasks:  make(chan Ider),
+		Fail:   make(chan Ider),
+		Finish: make(chan Ider),
 		Errors: make(chan error),
 		rq:     rq,
 	}
 
 	go l.listenOnError()
 	go l.listenOnFinish()
-	go l.listenOnElements()
+	go l.listenOnElements(example)
 	return l
 }
 
@@ -70,17 +71,31 @@ func (l *Listener) listenOnFinish() {
 	}
 }
 
-func (l *Listener) listenOnElements() {
+func (l *Listener) listenOnElements(example Ider) {
 	defer func() {
 		l.closeErrors()
 		close(l.Tasks)
 	}()
 
+	typ := reflect.TypeOf(example)
+	isPointer := false
+
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		isPointer = true
+	}
+
 	for id := range l.l.Elements {
-		if task, err := l.rq.Storage.Get(string(id)); err != nil {
+		task := reflect.New(typ).Interface()
+		if err := l.rq.Storage.Get(id, task); err != nil {
 			l.Errors <- errorcaller.Err(err)
 		} else {
-			l.Tasks <- task
+
+			if !isPointer {
+				task = reflect.ValueOf(task).Elem().Interface()
+			}
+
+			l.Tasks <- task.(Ider)
 		}
 	}
 }

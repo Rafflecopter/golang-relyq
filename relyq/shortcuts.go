@@ -8,6 +8,6 @@ import (
 
 func NewRedisJson(pool *redis.Pool, cfg *Config) *Queue {
 	cfg.Defaults()
-	storage := redisstorage.New(marshallers.JSON, pool, cfg.Prefix, cfg.Delimiter)
+	storage := redisstorage.New(marshallers.Json, pool, cfg.Prefix, cfg.Delimiter)
 	return New(pool, storage, cfg)
 }

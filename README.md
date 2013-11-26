@@ -4,7 +4,7 @@ A relatively simple Redis-backed reliable task queue and state machine.
 
 Its made up of four [simpleq](https://github.com/Rafflecopter/golang-simpleq)'s: todo, doing, failed, and done. Tasks will never be dropped on the floor even if a processing server crashes because all operations are atomic. Tasks can be represented as any data type.
 
-_Note_: relyq assumes all tasks are objects. It is opinionated in that way. Also, all tasks have id's. If they don't exist, they are created using a random uuid.
+_Note_: relyq assumes all tasks have IDs. Thus you must pass in a pointer to an object that has an `Id()` method (or its element has an `Id()` method.)
 
 There are a few redis clients for Go but this package uses [redigo](https://github.com/garyburd/redigo)
 
@@ -48,19 +48,35 @@ func QuickCreateRelyQ(pool *redis.Pool) *relyq.Queue {
 
 ## Use
 
+Create your task types:
+
+```go
+type Task struct {
+  IdField string
+  SomethingElse *OtherStruct
+}
+func (t *Task) Id() {
+  if t.IdField == "" {
+    t.IdField = CreateId()
+  }
+  return t.IdField
+}
+```
+
 Basic use:
 
 ```go
 q := CreateRelyQ(redisPool)
 
 // Push a task on to Todo queue
-err := q.Push(Task{"some":"fields","a":1})
+err := q.Push(&Task{SomethingElse: &OtherStruct{}})
 
 // Move a task from Todo to Doing
-task, err := q.Process()
+task := new(Task)
+ok, err := q.Process(task) // ok=false means nothing in task
 
 // Block and process a task
-task, err := q.BProcess()
+err := q.BProcess(task)
 
 // Finish a task
 err := q.Finish(task)
@@ -80,7 +96,8 @@ Or use a listener:
 ```go
 q := CreateRelyQ(redisPool)
 
-l := q.Listen()
+var example *Task
+l := q.Listen(example)
 
 go func() {
   for err := range l.Errors {
@@ -91,7 +108,7 @@ go func() {
 go func() {
   for task := range l.Tasks {
     // Do something with tasks
-    err := q.Finish(task)
+    err := q.Finish(task.(*Task))
   }
 }()
 
@@ -116,7 +133,7 @@ The Redis backend stores serialized task objects in Redis. Each options object a
 Create a storage object:
 
 ```go
-storage := redisstorage.New(redisstorage.JSONMarshaller, pool, cfg.Prefix, cfg.Delimiter)
+storage := redisstorage.New(marshallers.JsonMarshaller, pool, cfg.Prefix, cfg.Delimiter)
 ```
 
 Or, for skipping the storage step, use this handy shortcut
