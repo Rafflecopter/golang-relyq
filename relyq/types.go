@@ -19,7 +19,7 @@ func (t ArbitraryTask) Id() []byte {
 // A struct that implements Ider to be used in task objects for applications.
 // Use like so:
 //
-//    task MyTask struct {
+//    type MyTask struct {
 //      StructuredTask
 //      OtherFields string
 //    }
