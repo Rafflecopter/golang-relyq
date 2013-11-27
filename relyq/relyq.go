@@ -192,7 +192,7 @@ func (q *Queue) Fail(task Ider) error {
 
 // Remove a task from a queue
 // If dontDelete (single extra arg) is true, then no delete call will be done for the task
-func (q *Queue) Remove(subq *simpleq.Queue, task Task, keepInStorage ...bool) error {
+func (q *Queue) Remove(subq *simpleq.Queue, task Ider, keepInStorage ...bool) error {
 	id := task.Id()
 	w := waiter.New(2)
 
