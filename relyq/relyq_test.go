@@ -5,7 +5,6 @@ import (
 	"github.com/Rafflecopter/golang-relyq/marshallers"
 	"github.com/Rafflecopter/golang-relyq/storage/redis"
 	"github.com/Rafflecopter/golang-simpleq/simpleq"
-	"github.com/extemporalgenome/uuid"
 	"github.com/garyburd/redigo/redis"
 	"io"
 	"math/rand"
@@ -31,30 +30,30 @@ func TestPush(t *testing.T) {
 	q := begin(nil, defaultConfig())
 	defer end(t, q)
 
-	push(t, q, Task{"f": "foo123"})
-	push(t, q, Task{"f": "456bar"})
+	push(t, q, ArbitraryTask{"f": "foo123"})
+	push(t, q, ArbitraryTask{"f": "456bar"})
 
-	checkTaskList(t, q, q.Todo, Task{"f": "456bar"}, Task{"f": "foo123"})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"f": "456bar"}, ArbitraryTask{"f": "foo123"})
 }
 
 func TestProcess(t *testing.T) {
 	q := begin(nil, defaultConfig())
 	defer end(t, q)
 
-	push(t, q, Task{"f": "pleasure"})
-	push(t, q, Task{"f": "pain"})
+	push(t, q, ArbitraryTask{"f": "pleasure"})
+	push(t, q, ArbitraryTask{"f": "pain"})
 
-	tp := Task{}
+	tp := ArbitraryTask{}
 	if ok, err := q.Process(&tp); err != nil {
 		t.Error("Process", err)
 	} else if !ok {
 		t.Error("Process returned nil")
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "pleasure"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "pleasure"})
 	}
 
-	checkTaskList(t, q, q.Todo, Task{"f": "pain"})
-	checkTaskList(t, q, q.Doing, Task{"f": "pleasure"})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"f": "pain"})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"f": "pleasure"})
 }
 
 func TestStructProcess(t *testing.T) {
@@ -82,27 +81,27 @@ func TestBProcess(t *testing.T) {
 	defer end(t, q, q)
 
 	go func() {
-		push(t, q, Task{"f": "happy-days"})
-		push(t, q, Task{"f": "television"})
-		push(t, q, Task{"f": "shows"})
+		push(t, q, ArbitraryTask{"f": "happy-days"})
+		push(t, q, ArbitraryTask{"f": "television"})
+		push(t, q, ArbitraryTask{"f": "shows"})
 	}()
 
-	tp := Task{}
+	tp := ArbitraryTask{}
 	if err := q.BProcess(1, &tp); err != nil{
 		t.Error("BProcess", err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "happy-days"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "happy-days"})
 	}
 
-	tp = Task{}
+	tp = ArbitraryTask{}
 	if err := q.BProcess(1, &tp); err != nil {
 		t.Error("BProcess", err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "television"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "television"})
 	}
 
-	checkTaskList(t, q, q.Todo, Task{"f": "shows"})
-	checkTaskList(t, q, q.Doing, Task{"f": "television"}, Task{"f": "happy-days"})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"f": "shows"})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"f": "television"}, ArbitraryTask{"f": "happy-days"})
 }
 
 func TestFinish(t *testing.T) {
@@ -112,15 +111,15 @@ func TestFinish(t *testing.T) {
 	q := begin(nil, cfg)
 	defer end(t, q)
 
-	push(t, q, Task{"f": "something"})
-	push(t, q, Task{"f": "else"})
-	push(t, q, Task{"f": "argument"})
+	push(t, q, ArbitraryTask{"f": "something"})
+	push(t, q, ArbitraryTask{"f": "else"})
+	push(t, q, ArbitraryTask{"f": "argument"})
 
-	tp := Task{}
+	tp := ArbitraryTask{}
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "something"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "something"})
 		tp["result"] = "another-thing"
 
 		t.Log(tp)
@@ -130,105 +129,105 @@ func TestFinish(t *testing.T) {
 		}
 	}
 
-	tp = Task{}
+	tp = ArbitraryTask{}
 	if ok, err := q.Process(&tp); err != nil || !ok {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "else"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "else"})
 	}
 
-	checkTaskList(t, q, q.Todo, Task{"f": "argument"})
-	checkTaskList(t, q, q.Doing, Task{"f": "else"})
-	checkTaskList(t, q, q.Done, Task{"f": "something", "result": "another-thing"})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"f": "argument"})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"f": "else"})
+	checkTaskList(t, q, q.Done, ArbitraryTask{"f": "something", "result": "another-thing"})
 }
 
 func TestCleanFinish(t *testing.T) {
 	q := begin(nil, defaultConfig())
 	defer end(t, q)
 
-	push(t, q, Task{"f": "something"})
-	push(t, q, Task{"f": "else"})
-	push(t, q, Task{"f": "argument"})
+	push(t, q, ArbitraryTask{"f": "something"})
+	push(t, q, ArbitraryTask{"f": "else"})
+	push(t, q, ArbitraryTask{"f": "argument"})
 
-	tp := Task{}
+	tp := ArbitraryTask{}
 	if ok, err := q.Process(&tp); err != nil || !ok {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "something"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "something"})
 
 		if err := q.Finish(tp); err != nil {
 			t.Error("Finish", err)
 		}
 	}
 
-	tp = Task{}
+	tp = ArbitraryTask{}
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "else"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "else"})
 	}
 
-	checkTaskList(t, q, q.Todo, Task{"f": "argument"})
-	checkTaskList(t, q, q.Doing, Task{"f": "else"})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"f": "argument"})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"f": "else"})
 }
 
 func TestFail(t *testing.T) {
 	q := begin(nil, defaultConfig())
 	defer end(t, q)
 
-	push(t, q, Task{"f": "try"})
-	push(t, q, Task{"f": "new"})
-	push(t, q, Task{"f": "things"})
+	push(t, q, ArbitraryTask{"f": "try"})
+	push(t, q, ArbitraryTask{"f": "new"})
+	push(t, q, ArbitraryTask{"f": "things"})
 
-	tp := Task{}
+	tp := ArbitraryTask{}
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "try"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "try"})
 	}
 
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "new"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "new"})
 
 		if err := q.Fail(tp); err != nil {
 			t.Error("Fail", err)
 		}
 	}
 
-	checkTaskList(t, q, q.Todo, Task{"f": "things"})
-	checkTaskList(t, q, q.Doing, Task{"f": "try"})
-	checkTaskList(t, q, q.Failed, Task{"f": "new"})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"f": "things"})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"f": "try"})
+	checkTaskList(t, q, q.Failed, ArbitraryTask{"f": "new"})
 }
 
 func TestFinishFail(t *testing.T) {
 	q := begin(nil, defaultConfig())
 	defer end(t, q)
 
-	push(t, q, Task{"a": 1})
-	push(t, q, Task{"a": 2})
-	push(t, q, Task{"a": 3})
-	push(t, q, Task{"a": 4})
+	push(t, q, ArbitraryTask{"a": 1})
+	push(t, q, ArbitraryTask{"a": 2})
+	push(t, q, ArbitraryTask{"a": 3})
+	push(t, q, ArbitraryTask{"a": 4})
 
-	savetp := Task{}
-	tp := Task{}
+	savetp := ArbitraryTask{}
+	tp := ArbitraryTask{}
 
 	if ok, err := q.Process(&savetp); err != nil || !ok {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, savetp, Task{"a": float64(1)})
+		checkTaskEqual(t, savetp, ArbitraryTask{"a": float64(1)})
 
 		if err := q.Fail(savetp); err != nil {
 			t.Error("Fail", err)
 		}
 	}
 
-	tp = Task{}
+	tp = ArbitraryTask{}
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"a": float64(2)})
+		checkTaskEqual(t, tp, ArbitraryTask{"a": float64(2)})
 
 		if err := q.Fail(tp); err != nil {
 			t.Error("Fail", err)
@@ -239,37 +238,37 @@ func TestFinishFail(t *testing.T) {
 		t.Error("FailFinish", err)
 	}
 
-	tp = Task{}
+	tp = ArbitraryTask{}
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"a": float64(3)})
+		checkTaskEqual(t, tp, ArbitraryTask{"a": float64(3)})
 	}
 
-	checkTaskList(t, q, q.Todo, Task{"a": float64(4)})
-	checkTaskList(t, q, q.Doing, Task{"a": float64(3)})
-	checkTaskList(t, q, q.Failed, Task{"a": float64(2)})
+	checkTaskList(t, q, q.Todo, ArbitraryTask{"a": float64(4)})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"a": float64(3)})
+	checkTaskList(t, q, q.Failed, ArbitraryTask{"a": float64(2)})
 }
 
 func TestRemove(t *testing.T) {
 	q := begin(nil, defaultConfig())
 	defer end(t, q)
 
-	push(t, q, Task{"f": "foo"})
-	push(t, q, Task{"f": "bar", "id": "123"}) // Known ID
+	push(t, q, ArbitraryTask{"f": "foo"})
+	push(t, q, ArbitraryTask{"f": "bar", "id": "123"}) // Known ID
 
-	tp := Task{}
+	tp := ArbitraryTask{}
 	if ok, err := q.Process(&tp); !ok || err != nil {
 		t.Error("Process", ok, err)
 	} else {
-		checkTaskEqual(t, tp, Task{"f": "foo"})
+		checkTaskEqual(t, tp, ArbitraryTask{"f": "foo"})
 
 		if err := q.Remove(q.Doing, tp); err != nil {
 			t.Error("Remove", err)
 		}
 	}
 
-	if err := q.Remove(q.Todo, Task{"f": "bar", "id": "123"}); err != nil {
+	if err := q.Remove(q.Todo, ArbitraryTask{"f": "bar", "id": "123"}); err != nil {
 		t.Error("Remove", err)
 	}
 
@@ -282,11 +281,11 @@ func TestListen(t *testing.T) {
 	defer end(t, q)
 	done, clsd := make(chan bool), make(chan bool)
 
-	push(t, q, Task{"x": "1"})
-	push(t, q, Task{"x": "2"})
-	push(t, q, Task{"x": "3"})
+	push(t, q, ArbitraryTask{"x": "1"})
+	push(t, q, ArbitraryTask{"x": "2"})
+	push(t, q, ArbitraryTask{"x": "3"})
 
-	var example Task
+	var example ArbitraryTask
 	l := q.Listen(example)
 
 	go func() {
@@ -298,7 +297,7 @@ func TestListen(t *testing.T) {
 
 	go func() {
 		for itask := range l.Tasks {
-			task := itask.(Task)
+			task := itask.(ArbitraryTask)
 
 			switch task["x"] {
 			case "1":
@@ -322,8 +321,8 @@ func TestListen(t *testing.T) {
 	}
 
 	checkTaskList(t, q, q.Todo)
-	checkTaskList(t, q, q.Doing, Task{"x": "3"})
-	checkTaskList(t, q, q.Failed, Task{"x": "2", "y": "2"})
+	checkTaskList(t, q, q.Doing, ArbitraryTask{"x": "3"})
+	checkTaskList(t, q, q.Failed, ArbitraryTask{"x": "2", "y": "2"})
 
 	if err := l.Close(); err != nil {
 		t.Error(err)
@@ -407,30 +406,9 @@ func TestStructListen(t *testing.T) {
 
 // -- Helpers --
 
-type Task map[string]interface{}
-
-func (t Task) Id() []byte {
-	if id, ok := t["id"]; ok {
-		if s, ok := id.(string); ok {
-			return []byte(s)
-		}
-		panic(fmt.Sprintf("Shouldn't have anything in id field not a byte or string %s",id))
-	}
-	id := uuid.NewRandom().String()
-	t["id"] = id
-	return []byte(id)
-}
-
 type TaskStruct struct {
-	F, G string
-	Uid   []byte `json:"id"`
-}
-
-func (t *TaskStruct) Id() []byte {
-	if t.Uid == nil {
-		t.Uid = uuid.NewRandom().Bytes()
-	}
-	return t.Uid
+	StructuredTask
+  F, G string
 }
 
 func defaultConfig() *Config {
@@ -451,7 +429,7 @@ func rstr(n int) string {
 	return string(s)
 }
 
-func checkTaskList(t *testing.T, rq *Queue, sq *simpleq.Queue, els ...Task) {
+func checkTaskList(t *testing.T, rq *Queue, sq *simpleq.Queue, els ...ArbitraryTask) {
 	list, err := sq.List()
 	if err != nil {
 		t.Error("Error List(): " + err.Error())
@@ -465,7 +443,7 @@ func checkTaskList(t *testing.T, rq *Queue, sq *simpleq.Queue, els ...Task) {
 	}
 
 	for i, id := range list {
-		el := Task{}
+		el := ArbitraryTask{}
 		err := rq.Storage.Get(id, &el)
 		if err != nil {
 			t.Error("Error doing storage.Get(): ", err, string(id))
@@ -501,7 +479,7 @@ func checkTaskStructList(t *testing.T, rq *Queue, sq *simpleq.Queue, els ...*Tas
 	}
 }
 
-func checkTaskEqual(t *testing.T, el, compare Task) {
+func checkTaskEqual(t *testing.T, el, compare ArbitraryTask) {
 	if id, ok := el["id"]; !ok || id == nil {
 		t.Error("element has no id!", el)
 	} else {
@@ -513,10 +491,13 @@ func checkTaskEqual(t *testing.T, el, compare Task) {
 }
 
 func checkTaskStructEqual(t *testing.T, el, compare *TaskStruct) {
-	if el.Uid == nil {
+	if el == nil {
+		t.Error("element is nil!")
+		return
+	} else if el.RqId == nil {
 		t.Error("element has no id!", el)
 	} else {
-		compare.Uid = el.Uid
+		compare.RqId = el.RqId
 		if !reflect.DeepEqual(el, compare) {
 			t.Error("Task structs are not equal!", el, compare)
 		}
