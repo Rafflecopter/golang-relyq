@@ -235,7 +235,7 @@ func (q *Queue) Close() error {
 }
 
 func (cfg *Config) Defaults() {
-	if cfg.Prefix == "" {
+	if cfg == nil || cfg.Prefix == "" {
 		panic("Prefix required for relyq")
 	}
 
