@@ -52,14 +52,10 @@ Create your task types:
 
 ```go
 type Task struct {
+  relyq.StructuredTask
+
   IdField string
   SomethingElse *OtherStruct
-}
-func (t *Task) Id() {
-  if t.IdField == "" {
-    t.IdField = CreateId()
-  }
-  return t.IdField
 }
 ```
 

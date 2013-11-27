@@ -4,6 +4,7 @@ import (
   "github.com/extemporalgenome/uuid"
 )
 
+// An arbitrary task object that can be directly used by applications
 type ArbitraryTask map[string]interface{}
 
 func (t ArbitraryTask) Id() []byte {
@@ -15,6 +16,13 @@ func (t ArbitraryTask) Id() []byte {
   return []byte(id)
 }
 
+// A struct that implements Ider to be used in task objects for applications.
+// Use like so:
+//
+//    task MyTask struct {
+//      StructuredTask
+//      OtherFields string
+//    }
 type StructuredTask struct {
   RqId []byte `json:"id"`
 }
