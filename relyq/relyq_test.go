@@ -87,7 +87,7 @@ func TestBProcess(t *testing.T) {
 	}()
 
 	tp := ArbitraryTask{}
-	if err := q.BProcess(1, &tp); err != nil{
+	if err := q.BProcess(1, &tp); err != nil {
 		t.Error("BProcess", err)
 	} else {
 		checkTaskEqual(t, tp, ArbitraryTask{"f": "happy-days"})
@@ -408,7 +408,7 @@ func TestStructListen(t *testing.T) {
 
 type TaskStruct struct {
 	StructuredTask
-  F, G string
+	F, G string
 }
 
 func defaultConfig() *Config {
