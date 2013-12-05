@@ -1,7 +1,7 @@
 package relyq
 
 import (
-	"github.com/extemporalgenome/uuid"
+	"github.com/satori/go.uuid"
 )
 
 // An arbitrary task object that can be directly used by applications
@@ -11,7 +11,7 @@ func (t ArbitraryTask) Id() []byte {
 	if id, ok := t["id"]; ok {
 		return []byte(id.(string))
 	}
-	id := uuid.NewRandom().String()
+	id := uuid.NewV4().String()
 	t["id"] = id
 	return []byte(id)
 }
@@ -33,7 +33,7 @@ func (t *StructuredTask) Id() []byte {
 	}
 
 	if t.RqId == nil {
-		t.RqId = uuid.NewRandom().Bytes()
+		t.RqId = uuid.NewV4().Bytes()
 	}
 	return t.RqId
 }
