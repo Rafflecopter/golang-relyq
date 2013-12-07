@@ -494,7 +494,7 @@ func checkTaskStructEqual(t *testing.T, el, compare *TaskStruct) {
 	if el == nil {
 		t.Error("element is nil!")
 		return
-	} else if el.RqId == nil {
+	} else if el.RqId == "" {
 		t.Error("element has no id!", el)
 	} else {
 		compare.RqId = el.RqId

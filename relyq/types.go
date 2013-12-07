@@ -24,7 +24,7 @@ func (t ArbitraryTask) Id() []byte {
 //      OtherFields string
 //    }
 type StructuredTask struct {
-	RqId []byte `json:"id"`
+	RqId string `json:"id"`
 }
 
 func (t *StructuredTask) Id() []byte {
@@ -32,8 +32,8 @@ func (t *StructuredTask) Id() []byte {
 		t = new(StructuredTask)
 	}
 
-	if t.RqId == nil {
-		t.RqId = uuid.NewV4().Bytes()
+	if t.RqId == "" {
+		t.RqId = uuid.NewV4().String()
 	}
-	return t.RqId
+	return []byte(t.RqId)
 }
